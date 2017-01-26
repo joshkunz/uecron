@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import re
 import socket
@@ -14,7 +14,7 @@ import subprocess
 # as 15 seems to be an ok-enough solution.
 NETLINK_KOBJECT_UEVENT = 15
 
-Rule = namedtuple("Rule", ["device", "action", "command"])
+Rule = namedtuple("Rule", ["device", "actions", "command"])
 
 class Config(object):
     WS = re.compile(r"\s+")
@@ -26,13 +26,15 @@ class Config(object):
             line = line.strip()
             if line[0] == '#':
                 continue
-            device, action, command = kls.WS.split(line, 2)
-            rule = Rule(device, action, command)
+            device, actions, command = kls.WS.split(line, 2)
+            actions = [x.lower() for x in actions.split(",")]
+            rule = Rule(device, actions, command)
             config.add_rule(rule)
         return config
 
     def add_rule(self, rule):
-        self.rules[rule.device][rule.action].append(rule)
+        for action in rule.actions:
+            self.rules[rule.device][action].append(rule)
 
     def __init__(self, rules=[]):
         self.rules = defaultdict(lambda: defaultdict(list))
@@ -80,7 +82,8 @@ class Manager(object):
         for rule in rules:
             command = shlex.split(rule.command)
             new_env = dict(os.environ)
-            new_env.update(msg)
+            for (k, v) in msg.items():
+                new_env["UECRON_" + k] = v
             with subprocess.Popen(command, env=new_env) as proc:
                 try:
                     proc.wait(timeout=30)
@@ -100,7 +103,19 @@ if __name__ == "__main__":
     parser.add_argument("--config", "-c", required=True, nargs=1,
                         type=argparse.FileType('r'),
                         help="Path to configuration file")
+    parser.add_argument("--foreground", "-f",
+                        action="store_true",
+                        help="Run in the foreground instead of daemonizing.")
+
     args = parser.parse_args()
+
     conf = Config.from_file(args.config[0])
     manager = Manager(conf)
-    manager.run()
+
+    pid = None
+    if not args.foreground:
+        pid = os.fork()
+
+    if pid == 0:
+        os.setsid()
+        manager.run()

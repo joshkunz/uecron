@@ -1,0 +1,2 @@
+# Device                        Actions         Command
+/devices/virtual/net/bridge0    add             add_intf

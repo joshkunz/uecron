@@ -32,3 +32,14 @@ The exact set of environment variables changes depending on the event type
 and type of device, but the variables will always be prefixed with
 `UECRON_`.
 
+### Options
+
+```
+usage: uecrond [-h] --config CONFIG [--foreground]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --config CONFIG, -c CONFIG
+                        Path to configuration file
+  --foreground, -f      Run in the foreground instead of daemonizing.
+```

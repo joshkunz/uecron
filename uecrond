@@ -112,10 +112,13 @@ if __name__ == "__main__":
     conf = Config.from_file(args.config[0])
     manager = Manager(conf)
 
-    pid = None
-    if not args.foreground:
+    if args.foreground:
+        try:
+            manager.run()
+        except KeyboardInterrupt:
+            pass
+    else:
         pid = os.fork()
-
-    if pid == 0:
-        os.setsid()
-        manager.run()
+        if pid == 0:
+            os.setsid()
+            manager.run()
